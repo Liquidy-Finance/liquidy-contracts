@@ -1,0 +1,3 @@
+[alias]
+wasm = "build --target wasm32-unknown-unknown --release  --workspace --exclude rujira-rs --exclude rujira-bow --exclude rujira-rs-testing --exclude testing --exclude rujira-fin" 
+wasm-debug = "build --target wasm32-unknown-unknown"

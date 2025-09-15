@@ -1,0 +1,23 @@
+[package]
+name = "liquidy-rs-testing"
+version = { workspace = true }
+authors = ["jandevman <166326613+jandevman@users.noreply.github.com>"]
+edition = { workspace = true }
+
+[features]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+cw-multi-test = { workspace = true }
+anyhow = { workspace = true }
+rujira-rs = { workspace = true }
+anybuf = { workspace = true }
+prost = { workspace = true }
+liquidy-rs = { workspace = true }
+rujira-rs-testing = { workspace = true }
+rujira-fin = { workspace = true }
+liquidy-swap = { workspace = true }

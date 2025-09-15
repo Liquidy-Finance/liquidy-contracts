@@ -1,0 +1,45 @@
+use cosmwasm_std::{CheckedFromRatioError, DivideByZeroError, OverflowError, StdError};
+use cw_utils::PaymentError;
+use rujira_rs::SharePoolError;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ContractError {
+    #[error("{0}")]
+    Std(#[from] StdError),
+
+    #[error("{0}")]
+    Payment(#[from] PaymentError),
+
+    #[error("{0}")]
+    CheckedFromRatio(#[from] CheckedFromRatioError),
+
+    #[error("{0}")]
+    OverflowError(#[from] OverflowError),
+
+    #[error("{0}")]
+    DivideByZero(#[from] DivideByZeroError),
+
+    #[error("{0}")]
+    SharePool(#[from] SharePoolError),
+
+    #[error("Unauthorized")]
+    Unauthorized {},
+
+    #[error("InsufficientFunds")]
+    InsufficientFunds {},
+
+    #[error("Invalid return amount {returned} expected {min_return}")]
+    InvalidReturnAmount { returned: u128, min_return: u128 },
+
+    #[error("Invalid affiliate fee > {max}")]
+    InvalidAffiliateFee { max: u16 },
+
+    #[error("Invalid referral fee > {max}")]
+    InvalidReferralFee { max: u16 },
+
+    #[error("Invalid: {0}")]
+    Invalid(String),
+    // Add any other custom errors you like here.
+    // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
+}

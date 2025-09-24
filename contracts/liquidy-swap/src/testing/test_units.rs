@@ -86,7 +86,7 @@ fn base_test() {
     // );
 
     let user = test_env.app.api().addr_make("user");
-    
+
     let lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
 
     assert_eq!(
@@ -375,7 +375,10 @@ fn simulate_multihop_swap() {
 
     // Verify simulation result
     // Expected: 16,813,170 with fee 16,830
-    assert_eq!(simulation_result_step_1.returned, Uint128::from(16_813_170u128));
+    assert_eq!(
+        simulation_result_step_1.returned,
+        Uint128::from(16_813_170u128)
+    );
     assert_eq!(simulation_result_step_1.fee, Uint128::from(16_830u128));
 
     let simulation_result_step_2 = test_env
@@ -392,7 +395,10 @@ fn simulate_multihop_swap() {
 
     // Verify simulation result
     // Expected: 167,962 with fee 169
-    assert_eq!(simulation_result_step_2.returned, Uint128::from(167_962u128));
+    assert_eq!(
+        simulation_result_step_2.returned,
+        Uint128::from(167_962u128)
+    );
     assert_eq!(simulation_result_step_2.fee, Uint128::from(169u128));
 
     let simulation_result = test_env
@@ -647,7 +653,6 @@ fn affiliate_admin() {
         .query_affiliates(&mut test_env.app, None, None)
         .unwrap();
     let (affiliate_key, affiliate) = &affiliates_list_resp.affiliates[0];
-    
 
     assert_eq!(affiliates_list_resp.affiliates.len(), 1);
     let ruji_affiliate = test_env
@@ -859,7 +864,7 @@ fn affiliate_admin_referral_fee_max() {
         .unwrap();
 
     let user = test_env.app.api().addr_make("user");
-    
+
     let lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
 
     assert_eq!(
@@ -981,7 +986,7 @@ fn affiliate_admin_only_affiliate_fee() {
         .unwrap();
 
     let user = test_env.app.api().addr_make("user");
-    
+
     let lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
 
     assert_eq!(
@@ -1099,7 +1104,7 @@ fn swap_affiliate_only_referral() {
             ("affiliate_fee", "0".to_string()),
         ]),
     );
-    
+
     let lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
     let lqdy_balance_fee_collector = test_env.app.query_balance("fee_collector", "lqdy", true);
     let lqdy_balance_affiliate_ruji = test_env.app.query_balance("ruji", "lqdy", true);
@@ -1206,7 +1211,6 @@ fn swap_affiliate_with_affiliate_fee() {
         )
         .unwrap();
 
-    
     let lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
     let lqdy_balance_fee_collector = test_env.app.query_balance("fee_collector", "lqdy", true);
     let lqdy_balance_affiliate_ruji = test_env.app.query_balance("ruji", "lqdy", true);
@@ -1317,7 +1321,6 @@ fn swap_affiliate_with_affiliate_fee_two_addresses() {
         )
         .unwrap();
 
-    
     let lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
     let lqdy_balance_fee_collector = test_env.app.query_balance("fee_collector", "lqdy", true);
     let lqdy_balance_ruji_referral = test_env.app.query_balance("ruji_referral", "lqdy", true);

@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Coin, Uint128};
+use rujira_rs::fin::SimulationResponse;
 use rujira_rs::CallbackData;
 
 #[cw_serde]
@@ -37,6 +38,9 @@ pub enum SudoMsg {
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
+
+    #[returns(SimulationResponse)]
+    Simulate { coin: Coin, stages: Vec<Stage> },
 
     #[returns(AffiliatesResponse)]
     Affiliates {

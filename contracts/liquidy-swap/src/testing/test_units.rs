@@ -102,6 +102,78 @@ fn base_test() {
         Uint128::from(10_000_000_000u128 - 1_700_000_000u128)
     );
 }
+
+#[test]
+fn simulate_simple_swap() {
+    // Initialize user balances (same as base_test)
+    let balances = vec![
+        (
+            "user",
+            vec![
+                coin(10_000_000_000, "nami"),
+                coin(10_000_000_000, "auto"),
+                coin(10_000_000_000, "lqdy"),
+                coin(10_000_000_000, "eth-usdc"),
+            ],
+        ),
+        (
+            "owner",
+            vec![
+                coin(100_000_000_000, "nami"),
+                coin(100_000_000_000, "auto"),
+                coin(100_000_000_000, "lqdy"),
+                coin(500_000_000_000, "eth-usdc"),
+            ],
+        ),
+        ("fee_collector", vec![]),
+    ];
+    let mut test_env = env::setup(
+        balances,
+        vec!["nami".to_string(), "auto".to_string(), "lqdy".to_string()],
+    );
+
+    // populate swap mocks so that fair price is 1 for everyone (same as base_test)
+    test_env.populate_orderbooks("owner");
+
+    let (_lqdy_token, lqdy_mocked_fin) = &test_env.fin_pairs[2];
+
+    // Test simulation with the same parameters as base_test
+    let simulation_result = test_env
+        .swap
+        .query_simulate(
+            &mut test_env.app,
+            coin(1_700_000_000u128, "eth-usdc"),
+            vec![Stage {
+                address: lqdy_mocked_fin.address.clone(),
+                denom: "eth-usdc".to_string(),
+            }],
+        )
+        .unwrap();
+
+    // Verify simulation result
+    // Expected: 16,983,000 lqdy tokens with 17,000 fee
+    assert_eq!(simulation_result.returned, Uint128::from(16_983_000u128));
+    assert_eq!(simulation_result.fee, Uint128::from(17_000u128));
+
+    // Test simulation with different amount
+    let simulation_result_2 = test_env
+        .swap
+        .query_simulate(
+            &mut test_env.app,
+            coin(850_000_000u128, "eth-usdc"), // Half the amount
+            vec![Stage {
+                address: lqdy_mocked_fin.address.clone(),
+                denom: "eth-usdc".to_string(),
+            }],
+        )
+        .unwrap();
+
+    // Should return half the tokens minus platform fee
+    // Expected: 8,491,500 with 8,500 fee
+    assert_eq!(simulation_result_2.returned, Uint128::from(8_491_500u128));
+    assert_eq!(simulation_result_2.fee, Uint128::from(8_500u128));
+}
+
 #[test]
 fn multi_hop() {
     // Initialize user balances
@@ -251,6 +323,100 @@ fn multi_hop() {
     );
     nami_balance_fee_collector = test_env.app.query_balance("fee_collector", "nami", true);
     assert_eq!(nami_balance_fee_collector, Uint128::from(168u128 + 168u128));
+}
+
+#[test]
+fn simulate_multihop_swap() {
+    // Initialize user balances
+    let balances = vec![
+        (
+            "user",
+            vec![
+                coin(10_000_000_000, "nami"),
+                coin(10_000_000_000, "auto"),
+                coin(10_000_000_000, "lqdy"),
+                coin(10_000_000_000, "eth-usdc"),
+            ],
+        ),
+        (
+            "owner",
+            vec![
+                coin(100_000_000_000, "nami"),
+                coin(100_000_000_000, "auto"),
+                coin(100_000_000_000, "lqdy"),
+                coin(500_000_000_000, "eth-usdc"),
+            ],
+        ),
+        ("fee_collector", vec![]),
+    ];
+    let mut test_env = env::setup(
+        balances,
+        vec!["nami".to_string(), "auto".to_string(), "lqdy".to_string()],
+    );
+
+    // populate swap mocks so that fair price is 1 for everyone
+    test_env.populate_orderbooks("owner");
+
+    let (_nami_token, nami_mocked_fin) = &test_env.fin_pairs[0];
+    //let (_auto_token,auto_mocked_fin )=&test_env.fin_pairs[1];
+    let (_lqdy_token, lqdy_mocked_fin) = &test_env.fin_pairs[2];
+
+    let simulation_result_step_1 = test_env
+        .swap
+        .query_simulate(
+            &mut test_env.app,
+            coin(170_000u128, "lqdy"),
+            vec![Stage {
+                address: lqdy_mocked_fin.address.clone(),
+                denom: "lqdy".to_string(),
+            }],
+        )
+        .unwrap();
+
+    // Verify simulation result
+    // Expected: 16,813,170 with fee 16,830
+    assert_eq!(simulation_result_step_1.returned, Uint128::from(16_813_170u128));
+    assert_eq!(simulation_result_step_1.fee, Uint128::from(16_830u128));
+
+    let simulation_result_step_2 = test_env
+        .swap
+        .query_simulate(
+            &mut test_env.app,
+            coin(16_813_170u128, "eth-usdc"),
+            vec![Stage {
+                address: nami_mocked_fin.address.clone(),
+                denom: "eth-usdc".to_string(),
+            }],
+        )
+        .unwrap();
+
+    // Verify simulation result
+    // Expected: 167,962 with fee 169
+    assert_eq!(simulation_result_step_2.returned, Uint128::from(167_962u128));
+    assert_eq!(simulation_result_step_2.fee, Uint128::from(169u128));
+
+    let simulation_result = test_env
+        .swap
+        .query_simulate(
+            &mut test_env.app,
+            coin(170_000u128, "lqdy"),
+            vec![
+                Stage {
+                    address: nami_mocked_fin.address.clone(),
+                    denom: "eth-usdc".to_string(),
+                },
+                Stage {
+                    address: lqdy_mocked_fin.address.clone(),
+                    denom: "lqdy".to_string(),
+                },
+            ],
+        )
+        .unwrap();
+
+    // Verify simulation result
+    // Expected: 168,131 with fee 169
+    assert_eq!(simulation_result.returned, Uint128::from(168_131u128));
+    assert_eq!(simulation_result.fee, Uint128::from(169u128));
 }
 
 #[test]

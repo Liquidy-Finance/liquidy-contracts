@@ -5,6 +5,7 @@ use liquidy_rs::swap::{
     QueryMsg, Stage, SudoMsg,
 };
 use liquidy_swap::contract::{execute, instantiate, query, sudo};
+use rujira_rs::fin::SimulationResponse;
 use rujira_rs::CallbackData;
 use rujira_rs_testing::RujiraApp;
 
@@ -112,5 +113,15 @@ impl MockLiquidySwap {
             self.address.clone(),
             &QueryMsg::Affiliate { affiliate_code },
         )
+    }
+
+    pub fn query_simulate(
+        &self,
+        app: &mut RujiraApp,
+        coin: Coin,
+        stages: Vec<Stage>,
+    ) -> StdResult<SimulationResponse> {
+        app.wrap()
+            .query_wasm_smart(self.address.clone(), &QueryMsg::Simulate { coin, stages })
     }
 }

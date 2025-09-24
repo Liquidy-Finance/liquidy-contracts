@@ -19,9 +19,9 @@ impl MockFin {
         let code = Box::new(ContractWrapper::new(execute, instantiate, query).with_sudo(sudo));
         let code_id = app.store_code(code);
         let layer_1_asset = get_layer_1_asset(base_denom);
-        
+
         let layer_1_asset_quote = get_layer_1_asset(quote_denom);
-        
+
         let contract = app
             .instantiate_contract(
                 code_id,

@@ -4,16 +4,15 @@ use crate::{config::Config, error::ContractError, events::execute_event};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, ensure, to_json_binary, wasm_execute, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Empty,
-    Env, MessageInfo, QuerierWrapper, Response, StdError, StdResult,
+    coins, ensure, to_json_binary, wasm_execute, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    Empty, Env, MessageInfo, QuerierWrapper, Response, StdError, StdResult,
 };
 use cw2::set_contract_version;
 use liquidy_rs::swap::{
     AffiliateResponse, AffiliatesResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, Stage,
     SudoMsg,
 };
-use rujira_rs::fin::{self, SwapRequest};
-use std::ops::Mul;
+use rujira_rs::fin::{self, SimulationResponse, SwapRequest};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -219,7 +218,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&Config::load(deps.storage)?)?),
         QueryMsg::Affiliates { limit, start_after } => {
@@ -235,6 +234,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
                 Ok(Some(a)) => Ok(to_json_binary(&AffiliateResponse { affiliate: a })?),
                 Err(_) => Err(ContractError::Invalid(affiliate_code.to_string())),
             }
+        }
+        QueryMsg::Simulate { coin, stages } => {
+            let local_stages = stages;
+            let config = Config::load(deps.storage)?;
+            let result = simulate_recursive(deps.querier, &env, local_stages, coin, &config)?;
+            Ok(to_json_binary(&result)?)
         }
     }
 }
@@ -264,6 +269,67 @@ fn execute_swap(querier: QuerierWrapper, env: &Env, stage: Stage) -> StdResult<C
     } else {
         Err(StdError::generic_err("No balance".to_string()))
     }
+}
+
+fn simulate_recursive(
+    querier: QuerierWrapper,
+    env: &Env,
+    mut stages: Vec<Stage>,
+    coin: Coin,
+    config: &Config,
+) -> StdResult<SimulationResponse> {
+    match stages.pop() {
+        None => {
+            // No more stages, deduct base platform fee and return the coin amount
+            let base_platform_fee = mul_bps(coin.amount.into(), config.fee_bps).to_uint_ceil();
+            let user_return = coin.amount.checked_sub(base_platform_fee)?;
+
+            Ok(SimulationResponse {
+                returned: user_return,
+                fee: base_platform_fee,
+            })
+        }
+        Some(stage) => {
+            // Simulate current stage
+            let result = simulate_swap(querier, env, stage, coin)?;
+
+            // If no more stages, deduct base platform fee and return result, otherwise continue recursively
+            if stages.is_empty() {
+                let base_platform_fee =
+                    mul_bps(result.returned.into(), config.fee_bps).to_uint_ceil();
+                let user_return = result.returned.checked_sub(base_platform_fee)?;
+
+                Ok(SimulationResponse {
+                    returned: user_return,
+                    fee: result.fee + base_platform_fee,
+                })
+            } else {
+                // Create next coin for remaining stages
+                // The next stage's input denom is determined by the next stage in the vector
+                // Since we're processing in reverse order, we need to look at the next stage's denom
+                let next_stage_denom = stages.last().unwrap().denom.clone();
+                let next_coin = Coin {
+                    denom: next_stage_denom,
+                    amount: result.returned,
+                };
+                simulate_recursive(querier, env, stages, next_coin, config)
+            }
+        }
+    }
+}
+
+fn simulate_swap(
+    querier: QuerierWrapper,
+    _env: &Env,
+    stage: Stage,
+    coin: Coin,
+) -> StdResult<SimulationResponse> {
+    // Query the swap contract to simulate the swap
+
+    let simulation_response: SimulationResponse =
+        querier.query_wasm_smart(stage.address, &rujira_rs::fin::QueryMsg::Simulate(coin))?;
+
+    Ok(simulation_response)
 }
 
 #[cfg(test)]

@@ -301,7 +301,7 @@ fn simulate_recursive(
 
                 Ok(SimulationResponse {
                     returned: user_return,
-                    fee: result.fee + base_platform_fee,
+                    fee: base_platform_fee,
                 })
             } else {
                 // Create next coin for remaining stages

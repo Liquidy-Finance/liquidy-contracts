@@ -220,7 +220,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     let config = Config::load(deps.storage)?;
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&config)?),
@@ -240,7 +240,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         }
         QueryMsg::Simulate { coin, stages } => {
             let local_stages = stages;
-            let result = simulate_recursive(deps.querier, &env, local_stages, coin, &config)?;
+            let result = simulate(deps.querier, local_stages, coin, &config)?;
             Ok(to_json_binary(&result)?)
         }
     }
@@ -305,66 +305,33 @@ fn execute_transfer(
     }
 }
 
-fn simulate_recursive(
+fn simulate(
     querier: QuerierWrapper,
-    env: &Env,
-    mut stages: Vec<Stage>,
-    coin: Coin,
+    stages: Vec<Stage>,
+    mut coin: Coin,
     config: &Config,
 ) -> StdResult<SimulationResponse> {
-    match stages.pop() {
-        None => {
-            // No more stages, deduct base platform fee and return the coin amount
-            let base_platform_fee = mul_bps(coin.amount.into(), config.fee_bps).to_uint_ceil();
-            let user_return = coin.amount.checked_sub(base_platform_fee)?;
+    let mut amount = coin.amount;
 
-            Ok(SimulationResponse {
-                returned: user_return,
-                fee: base_platform_fee,
-            })
-        }
-        Some(stage) => {
-            // Simulate current stage
-            let result = simulate_swap(querier, env, stage, coin)?;
+    // process from last to first, peeking the next (previous in original order)
+    let mut iter = stages.into_iter().rev().peekable();
 
-            // If no more stages, deduct base platform fee and return result, otherwise continue recursively
-            if stages.is_empty() {
-                let base_platform_fee =
-                    mul_bps(result.returned.into(), config.fee_bps).to_uint_ceil();
-                let user_return = result.returned.checked_sub(base_platform_fee)?;
+    while let Some(stage) = iter.next() {
+        let res: SimulationResponse = querier.query_wasm_smart(
+            stage.address,
+            &rujira_rs::fin::QueryMsg::Simulate(coin.clone()),
+        )?;
+        amount = res.returned;
 
-                Ok(SimulationResponse {
-                    returned: user_return,
-                    fee: base_platform_fee,
-                })
-            } else {
-                // Create next coin for remaining stages
-                // The next stage's input denom is determined by the next stage in the vector
-                // Since we're processing in reverse order, we need to look at the next stage's denom
-                let next_stage_denom = stages.last().unwrap().denom.clone();
-                let next_coin = Coin {
-                    denom: next_stage_denom,
-                    amount: result.returned,
-                };
-                simulate_recursive(querier, env, stages, next_coin, config)
-            }
+        if let Some(next_stage) = iter.peek() {
+            coin.denom = next_stage.denom.clone();
+            coin.amount = amount;
         }
     }
+
+    // deduct platform fee once at the end
+    let fee = mul_bps(amount.into(), config.fee_bps).to_uint_ceil();
+    let returned = amount.checked_sub(fee)?;
+
+    Ok(SimulationResponse { returned, fee })
 }
-
-fn simulate_swap(
-    querier: QuerierWrapper,
-    _env: &Env,
-    stage: Stage,
-    coin: Coin,
-) -> StdResult<SimulationResponse> {
-    // Query the swap contract to simulate the swap
-
-    let simulation_response: SimulationResponse =
-        querier.query_wasm_smart(stage.address, &rujira_rs::fin::QueryMsg::Simulate(coin))?;
-
-    Ok(simulation_response)
-}
-
-#[cfg(test)]
-mod tests {}

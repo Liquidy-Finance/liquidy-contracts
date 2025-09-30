@@ -174,15 +174,14 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    let mut config = Config::load(deps.storage)?;
     match msg {
         SudoMsg::UpdateFeeCollectorConfig { fee_collector } => {
-            let mut config = Config::load(deps.storage)?;
             config.fee_collector = deps.api.addr_validate(&fee_collector)?;
             config.save(deps.storage)?;
             Ok(Response::default())
         }
         SudoMsg::UpdateFeeBbsConfig { fee_bps } => {
-            let mut config = Config::load(deps.storage)?;
             config.fee_bps = fee_bps;
             config.save(deps.storage)?;
             Ok(Response::default())
@@ -190,7 +189,6 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
         SudoMsg::UpdateMaxAffiliateFeeBbsConfig {
             max_affiliate_fee_bps,
         } => {
-            let mut config = Config::load(deps.storage)?;
             config.max_affiliate_fee_bps = max_affiliate_fee_bps;
             config.save(deps.storage)?;
             Ok(Response::default())
@@ -202,7 +200,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
             let _affiliate_addr = deps
                 .api
                 .addr_validate(&affiliate.affiliate_payment_address)?;
-            STATUS.add_affiliate(deps.storage, affiliate)?;
+            STATUS.add_affiliate(deps.storage, affiliate, config.max_affiliate_fee_bps)?;
             Ok(Response::default())
         }
         SudoMsg::RemoveAffiliate { affiliate_code } => {
@@ -215,8 +213,9 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    let config = Config::load(deps.storage)?;
     match msg {
-        QueryMsg::Config {} => Ok(to_json_binary(&Config::load(deps.storage)?)?),
+        QueryMsg::Config {} => Ok(to_json_binary(&config)?),
         QueryMsg::Affiliates { limit, start_after } => {
             let limit = limit.unwrap_or(100);
 
@@ -233,7 +232,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         }
         QueryMsg::Simulate { coin, stages } => {
             let local_stages = stages;
-            let config = Config::load(deps.storage)?;
             let result = simulate_recursive(deps.querier, &env, local_stages, coin, &config)?;
             Ok(to_json_binary(&result)?)
         }

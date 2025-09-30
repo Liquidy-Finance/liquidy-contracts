@@ -2,7 +2,6 @@ use cosmwasm_std::{ensure, Order, StdResult, Storage};
 use cw_storage_plus::{Bound, Map};
 use liquidy_rs::swap::Affiliate;
 
-use crate::config::Config;
 use crate::ContractError;
 
 pub struct Status<'a> {
@@ -19,12 +18,12 @@ impl<'a> Status<'a> {
         &self,
         storage: &mut dyn Storage,
         affiliate: Affiliate,
+        max_affiliate_fee_bps: u16,
     ) -> Result<(), ContractError> {
-        let config = Config::load(storage)?;
         ensure!(
-            affiliate.affiliate_fee_bps <= config.max_affiliate_fee_bps,
+            affiliate.affiliate_fee_bps <= max_affiliate_fee_bps,
             ContractError::InvalidAffiliateFee {
-                max: config.max_affiliate_fee_bps
+                max: max_affiliate_fee_bps
             }
         );
 

@@ -29,7 +29,6 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let config = Config::new(deps.api, msg.clone())?;
-    config.validate()?;
     config.save(deps.storage)?;
     Ok(Response::default())
 }
@@ -179,14 +178,12 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
         SudoMsg::UpdateFeeCollectorConfig { fee_collector } => {
             let mut config = Config::load(deps.storage)?;
             config.fee_collector = deps.api.addr_validate(&fee_collector)?;
-            config.validate()?;
             config.save(deps.storage)?;
             Ok(Response::default())
         }
         SudoMsg::UpdateFeeBbsConfig { fee_bps } => {
             let mut config = Config::load(deps.storage)?;
             config.fee_bps = fee_bps;
-            config.validate()?;
             config.save(deps.storage)?;
             Ok(Response::default())
         }
@@ -195,7 +192,6 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
         } => {
             let mut config = Config::load(deps.storage)?;
             config.max_affiliate_fee_bps = max_affiliate_fee_bps;
-            config.validate()?;
             config.save(deps.storage)?;
             Ok(Response::default())
         }

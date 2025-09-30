@@ -3,8 +3,6 @@ use cosmwasm_std::{Addr, Api, StdResult, Storage};
 use cw_storage_plus::Item;
 use liquidy_rs::swap::InstantiateMsg;
 
-use crate::ContractError;
-
 static CONFIG: Item<Config> = Item::new("config");
 
 #[cw_serde]
@@ -27,24 +25,7 @@ impl Config {
         CONFIG.load(storage)
     }
 
-    pub fn validate(&self) -> Result<(), ContractError> {
-        //self.fee_collector.validate()?;
-        Ok(())
-    }
-
     pub fn save(&self, storage: &mut dyn Storage) -> StdResult<()> {
         CONFIG.save(storage, self)
     }
-}
-
-#[cfg(test)]
-mod tests {
-    //use super::*;
-
-    // #[test]
-    // fn validation() {
-    //     let mut app = App::default();
-    //     let fee_collector = app.api().addr_make("fee_collector");
-    //     Config {fee_collector:fee_collector, fee_bps:10u16}.validate().unwrap();
-    // }
 }

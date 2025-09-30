@@ -1095,7 +1095,7 @@ fn swap_affiliate_only_referral() {
         .unwrap();
 
     res.assert_event(
-        &Event::new("wasm-liquidy-swap-execute").add_attributes(vec![
+        &Event::new("wasm-liquidy-swap/execute").add_attributes(vec![
             ("affiliate", "ruji".to_string()),
             ("denom", "lqdy".to_string()),
             ("volume", "170000000".to_string()),

@@ -8,7 +8,7 @@ pub fn execute_event(
     referral_fee: &Uint128,
     affiliate_fee: &Uint128,
 ) -> Event {
-    let mut event = Event::new("liquidy-swap-execute")
+    let mut event = Event::new(format!("{}/execute", env!("CARGO_PKG_NAME")))
         .add_attribute("denom", denom)
         .add_attribute("volume", volume.to_string())
         .add_attribute("platform_fee", platform_fee.to_string());

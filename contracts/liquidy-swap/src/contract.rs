@@ -5,7 +5,7 @@ use crate::{config::Config, error::ContractError, events::execute_event};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coins, ensure, to_json_binary, wasm_execute, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, QuerierWrapper, Response, StdError, StdResult,
+    Empty, Env, MessageInfo, QuerierWrapper, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use liquidy_rs::swap::{
@@ -246,22 +246,26 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::default())
 }
 
-fn execute_swap(querier: QuerierWrapper, env: &Env, stage: Stage) -> StdResult<CosmosMsg> {
+fn execute_swap(
+    querier: QuerierWrapper,
+    env: &Env,
+    stage: Stage,
+) -> Result<CosmosMsg, ContractError> {
     let balance = querier.query_balance(env.contract.address.clone(), stage.denom)?;
-    if !balance.amount.is_zero() {
-        let msg = wasm_execute(
-            stage.address,
-            &fin::ExecuteMsg::Swap(SwapRequest {
-                min_return: None,
-                to: None,
-                callback: None,
-            }),
-            coins(balance.amount.u128(), balance.denom.clone()),
-        )?;
-        Ok(msg.into())
-    } else {
-        Err(StdError::generic_err("No balance".to_string()))
-    }
+    ensure!(
+        balance.amount.gt(&Uint128::zero()),
+        ContractError::NoBalance {}
+    );
+    let msg = wasm_execute(
+        stage.address,
+        &fin::ExecuteMsg::Swap(SwapRequest {
+            min_return: None,
+            to: None,
+            callback: None,
+        }),
+        coins(balance.amount.u128(), balance.denom.clone()),
+    )?;
+    Ok(msg.into())
 }
 
 fn simulate_recursive(

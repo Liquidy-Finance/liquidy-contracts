@@ -38,6 +38,9 @@ pub enum ContractError {
     #[error("Invalid referral fee > {max}")]
     InvalidReferralFee { max: u16 },
 
+    #[error("No balance")]
+    NoBalance,
+
     #[error("Invalid: {0}")]
     Invalid(String),
     // Add any other custom errors you like here.

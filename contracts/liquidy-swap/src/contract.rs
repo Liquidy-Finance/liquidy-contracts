@@ -293,12 +293,7 @@ fn execute_transfer(
         Err(_) => {
             //  this is a base layer address we can do a secure- transfer
             let signer = api.addr_canonicalize(&env.contract.address.as_str())?;
-
-            // convert to SecureAsset
             let asset = SecuredAsset::from_denom(&denom)?;
-
-            // todo! validate the recipient against the SecuredAsset chain
-
             let msg = MsgSecuredAssetWithdraw::new(
                 rujira_rs::Coin::new(asset, Uint256::from(amount.u128())),
                 recipient,

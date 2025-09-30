@@ -251,10 +251,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 fn execute_swap(querier: QuerierWrapper, env: &Env, stage: Stage) -> StdResult<CosmosMsg> {
-    //let balances = querier.query_all_balances(&env.contract.address)?;
-    //let mut msgs: Vec<CosmosMsg> = vec![];
     let balance = querier.query_balance(env.contract.address.clone(), stage.denom)?;
-    //let balance = balances.iter().find(|b| b.denom == denom.to_string());
     if !balance.amount.is_zero() {
         let msg = wasm_execute(
             stage.address,

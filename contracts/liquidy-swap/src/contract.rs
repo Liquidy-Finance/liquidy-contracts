@@ -78,7 +78,7 @@ pub fn execute(
 
                             let affiliate_fee =
                                 mul_bps(balance.amount.into(), aff.affiliate_fee_bps)
-                                    .to_uint_ceil();
+                                    .to_uint_floor();
                             let user_return = balance
                                 .amount
                                 .checked_sub(base_platform_fee)?

@@ -1,4 +1,4 @@
-mod bridge_asset;
-mod deposit;
-mod swap;
+pub mod deposit;
+mod secured_asset;
+pub mod swap;
 pub(crate) mod token_factory;

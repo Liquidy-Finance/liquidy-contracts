@@ -2,13 +2,13 @@ mod account_pool;
 mod asset;
 pub mod bid_pool;
 mod callback;
-mod coin;
+pub mod coin;
 mod coins;
 mod decimal_scaled;
 pub mod exchange;
 mod interfaces;
 mod memoed;
-mod msg;
+pub mod msg;
 mod oracle;
 mod premium;
 pub mod proto;
@@ -22,8 +22,8 @@ pub use account_pool::{AccountPool, AccountPoolAccount};
 pub use asset::{
     Asset, AssetError, Layer1Asset, Layer1AssetError, SecuredAsset, SecuredAssetError,
 };
-
 pub use callback::{CallbackData, CallbackMsg};
+pub use coin::Coin;
 pub use decimal_scaled::DecimalScaled;
 pub use interfaces::*;
 pub use oracle::{Oracle, OracleError};

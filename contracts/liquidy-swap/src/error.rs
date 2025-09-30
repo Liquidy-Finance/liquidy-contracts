@@ -1,6 +1,6 @@
 use cosmwasm_std::{CheckedFromRatioError, DivideByZeroError, OverflowError, StdError};
 use cw_utils::PaymentError;
-use rujira_rs::SharePoolError;
+use rujira_rs::{SecuredAssetError, SharePoolError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -43,6 +43,9 @@ pub enum ContractError {
 
     #[error("Invalid: {0}")]
     Invalid(String),
+
+    #[error("{0}")]
+    SecuredAssetError(#[from] SecuredAssetError),
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }

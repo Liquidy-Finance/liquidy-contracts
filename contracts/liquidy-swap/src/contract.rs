@@ -4,8 +4,8 @@ use crate::{config::Config, error::ContractError, events::execute_event};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, ensure, to_json_binary, wasm_execute, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Empty, Env, MessageInfo, QuerierWrapper, Response, StdResult, Uint128,
+    coins, ensure, to_json_binary, wasm_execute, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Deps,
+    DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Response, StdResult, Uint128, Uint256,
 };
 use cw2::set_contract_version;
 use liquidy_rs::swap::{
@@ -13,6 +13,8 @@ use liquidy_rs::swap::{
     SudoMsg,
 };
 use rujira_rs::fin::{self, SimulationResponse, SwapRequest};
+use rujira_rs::msg::secured_asset::MsgSecuredAssetWithdraw;
+use rujira_rs::SecuredAsset;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -112,6 +114,7 @@ pub fn execute(
 
                     let recipient =
                         recipient.ok_or(ContractError::Invalid("recipient not set".to_string()))?;
+
                     match callback {
                         Some(callback) => {
                             resp = resp.add_message(callback.to_message(
@@ -121,10 +124,15 @@ pub fn execute(
                             )?)
                         }
                         None => {
-                            resp = resp.add_message(CosmosMsg::Bank(BankMsg::Send {
-                                to_address: recipient.to_string(),
-                                amount: coins(user_return.u128(), min_return.denom.clone()),
-                            }));
+                            let msg = execute_transfer(
+                                &env,
+                                deps.api,
+                                recipient,
+                                user_return,
+                                min_return.denom.clone(),
+                            )?;
+
+                            resp = resp.add_message(msg);
                         }
                     };
 
@@ -264,6 +272,42 @@ fn execute_swap(
         coins(balance.amount.u128(), balance.denom.clone()),
     )?;
     Ok(msg.into())
+}
+
+fn execute_transfer(
+    env: &Env,
+    api: &dyn Api,
+    recipient: Addr,
+    amount: Uint128,
+    denom: String,
+) -> Result<CosmosMsg, ContractError> {
+    //  first check if is thorchain address if it is just bank send else wasm execute
+    match api.addr_validate(&recipient.to_string()) {
+        Ok(addr) => {
+            let msg = BankMsg::Send {
+                to_address: addr.to_string(),
+                amount: coins(amount.u128(), denom),
+            };
+            Ok(msg.into())
+        }
+        Err(_) => {
+            //  this is a base layer address we can do a secure- transfer
+            let signer = api.addr_canonicalize(&env.contract.address.as_str())?;
+
+            // convert to SecureAsset
+            let asset = SecuredAsset::from_denom(&denom)?;
+
+            // todo! validate the recipient against the SecuredAsset chain
+
+            let msg = MsgSecuredAssetWithdraw::new(
+                rujira_rs::Coin::new(asset, Uint256::from(amount.u128())),
+                recipient,
+                signer,
+            );
+
+            Ok(msg.into())
+        }
+    }
 }
 
 fn simulate_recursive(

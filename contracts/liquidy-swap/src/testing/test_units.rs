@@ -288,8 +288,9 @@ fn multi_hop() {
     let mut nami_balance_fee_collector = test_env.app.query_balance("fee_collector", "nami", true);
     assert_eq!(nami_balance_fee_collector, Uint128::from(169u128));
 
-    //Successful swap
-    test_env
+    // Multihop swap: lqdy -> eth-usdc -> nami
+    let user = test_env.app.api().addr_make("user");
+    let res = test_env
         .swap
         .execute_swap(
             &mut test_env.app,
@@ -310,6 +311,17 @@ fn multi_hop() {
             None,
         )
         .unwrap();
+
+    // Verify swap event includes input for multihop (user-centric data)
+    res.assert_event(
+        &Event::new("wasm-liquidy-swap/swap").add_attributes(vec![
+            ("recipient", user.to_string()),
+            ("input_amount", "170000".to_string()),
+            ("input_denom", "lqdy".to_string()),
+            ("output_amount", "166433".to_string()),
+            ("output_denom", "nami".to_string()),
+        ]),
+    );
 
     lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
     assert_eq!(
@@ -1104,6 +1116,13 @@ fn swap_affiliate_only_referral() {
             ("affiliate_fee", "0".to_string()),
         ]),
     );
+    res.assert_event(&Event::new("wasm-liquidy-swap/swap").add_attributes(vec![
+        ("recipient", user.to_string()),
+        ("input_amount", "17000000000".to_string()),
+        ("input_denom", "eth-usdc".to_string()),
+        ("output_amount", "169830000".to_string()),
+        ("output_denom", "lqdy".to_string()),
+    ]));
 
     let lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
     let lqdy_balance_fee_collector = test_env.app.query_balance("fee_collector", "lqdy", true);

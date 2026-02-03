@@ -1,6 +1,10 @@
 use crate::state::Status;
 use crate::util::mul_bps;
-use crate::{config::Config, error::ContractError, events::execute_event};
+use crate::{
+    config::Config,
+    error::ContractError,
+    events::{execute_event, swap_event},
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -51,6 +55,7 @@ pub fn execute(
             recipient,
             affiliate_code,
             callback,
+            input_coin,
         } => {
             let mut local_stages = stages;
 
@@ -94,14 +99,28 @@ pub fn execute(
                         }
                     };
 
-                    let mut resp = Response::new().add_event(execute_event(
-                        min_return.denom.clone(),
-                        &balance.amount,
-                        &platform_fee,
-                        affiliate_code,
-                        &referral_fee,
-                        &affiliate_fee,
-                    ));
+                    let recipient =
+                        recipient.ok_or(ContractError::Invalid("recipient not set".to_string()))?;
+
+                    let mut resp = Response::new()
+                        .add_event(execute_event(
+                            min_return.denom.clone(),
+                            &balance.amount,
+                            &platform_fee,
+                            affiliate_code,
+                            &referral_fee,
+                            &affiliate_fee,
+                        ))
+                        .add_event(swap_event(
+                            &recipient,
+                            &input_coin
+                                .as_ref()
+                                .map(|c| c.amount)
+                                .unwrap_or(Uint128::zero()),
+                            input_coin.as_ref().map(|c| c.denom.as_str()).unwrap_or(""),
+                            &user_return,
+                            &min_return.denom,
+                        ));
 
                     //Check user balance is more than min_return
                     ensure!(
@@ -111,9 +130,6 @@ pub fn execute(
                             min_return: min_return.amount.into()
                         }
                     );
-
-                    let recipient =
-                        recipient.ok_or(ContractError::Invalid("recipient not set".to_string()))?;
 
                     match callback {
                         Some(callback) => {
@@ -159,7 +175,12 @@ pub fn execute(
                     Ok(resp)
                 }
                 Some(s) => {
-                    let msg = execute_swap(deps.querier, &env, s)?;
+                    // The stage we pop (s) receives the current balance - on the first call that's
+                    // the user's funds, so s.denom is the input denom for the overall swap.
+                    let input_denom = s.denom.as_str();
+                    let msg = execute_swap(deps.querier, &env, s.clone())?;
+                    let resolved_input_coin = input_coin
+                        .or_else(|| info.funds.iter().find(|c| c.denom == input_denom).cloned());
 
                     Ok(Response::default()
                         .add_message(msg)
@@ -167,10 +188,11 @@ pub fn execute(
                             env.contract.address,
                             &ExecuteMsg::Swap {
                                 stages: local_stages,
-                                min_return: min_return,
-                                affiliate_code: affiliate_code.clone(),
+                                min_return,
                                 recipient: Some(recipient.unwrap_or(info.sender.clone())),
-                                callback: callback,
+                                affiliate_code: affiliate_code.clone(),
+                                callback,
+                                input_coin: resolved_input_coin,
                             },
                             vec![],
                         )?))

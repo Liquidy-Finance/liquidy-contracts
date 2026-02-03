@@ -45,6 +45,7 @@ impl MockLiquidySwap {
                 recipient: Some(app.api().addr_make(user)),
                 affiliate_code,
                 callback,
+                input_coin: None,
             },
             &funds,
         )

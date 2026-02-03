@@ -1,4 +1,19 @@
-use cosmwasm_std::{Event, Uint128};
+use cosmwasm_std::{Addr, Event, Uint128};
+
+pub fn swap_event(
+    recipient: &Addr,
+    input_amount: &Uint128,
+    input_denom: &str,
+    output_amount: &Uint128,
+    output_denom: &str,
+) -> Event {
+    Event::new(format!("{}/swap", env!("CARGO_PKG_NAME")))
+        .add_attribute("recipient", recipient.to_string())
+        .add_attribute("input_amount", input_amount.to_string())
+        .add_attribute("input_denom", input_denom)
+        .add_attribute("output_amount", output_amount.to_string())
+        .add_attribute("output_denom", output_denom)
+}
 
 pub fn execute_event(
     denom: String,

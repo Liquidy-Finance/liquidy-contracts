@@ -1,6 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Coin, Uint128};
-use rujira_rs::fin::SimulationResponse;
 use rujira_rs::CallbackData;
 
 #[cw_serde]
@@ -21,6 +20,9 @@ pub enum ExecuteMsg {
         recipient: Option<Addr>,
         affiliate_code: Option<String>,
         callback: Option<CallbackData>,
+        /// Internal: input coin passed through recursion for swap event emission
+        #[serde(skip_serializing_if = "Option::is_none")]
+        input_coin: Option<Coin>,
     },
 }
 
@@ -39,7 +41,7 @@ pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
 
-    #[returns(SimulationResponse)]
+    #[returns(rujira_rs::fin::SimulationResponse)]
     Simulate { coin: Coin, stages: Vec<Stage> },
 
     #[returns(AffiliatesResponse)]

@@ -313,15 +313,13 @@ fn multi_hop() {
         .unwrap();
 
     // Verify swap event includes input for multihop (user-centric data)
-    res.assert_event(
-        &Event::new("wasm-liquidy-swap/swap").add_attributes(vec![
-            ("recipient", user.to_string()),
-            ("input_amount", "170000".to_string()),
-            ("input_denom", "lqdy".to_string()),
-            ("output_amount", "166433".to_string()),
-            ("output_denom", "nami".to_string()),
-        ]),
-    );
+    res.assert_event(&Event::new("wasm-liquidy-swap/swap").add_attributes(vec![
+        ("recipient", user.to_string()),
+        ("input_amount", "170000".to_string()),
+        ("input_denom", "lqdy".to_string()),
+        ("output_amount", "166433".to_string()),
+        ("output_denom", "nami".to_string()),
+    ]));
 
     lqdy_balance_user = test_env.app.query_balance("user", "lqdy", true);
     assert_eq!(
